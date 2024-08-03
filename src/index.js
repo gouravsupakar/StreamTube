@@ -5,12 +5,11 @@ import { app } from "./app.js";
 
 dotenv.config();
 
-const port = process.env.PORT || 8000
+const port = process.env.PORT || 8000;
 
 // the second way to export function from db folder and execute the function;
 
 connectDB()   // now when ever we call the connection function which is asyncronus function it returns a promise so use .then and .catch to handel the promise and error
-
 .then(() => {
 
     app.on("error", (error) => {
@@ -53,7 +52,7 @@ import { DB_NAME } from "./constants.js";
 
 const app = express();
 
-( async() => {
+;( async() => {
     try {
         await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
         .then(() => {
