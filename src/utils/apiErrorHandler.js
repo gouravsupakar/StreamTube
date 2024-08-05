@@ -1,4 +1,4 @@
-// this is how we will standrise the error handling 
+// this is how we will standardise the error handling 
 
 class ApiError extends Error{
     constructor(

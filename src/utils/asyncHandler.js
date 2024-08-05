@@ -1,10 +1,10 @@
-const asyncHandler = (requestHandler) => {
+const asyncHandler = (func) => {
    return (req, res, next) => {
         Promise.resolve(
-            requestHandler(req, res, next)
+            func(req, res, next)
         ).catch((err) => next(err))
     }
-}   // this asybc handler handles promises with .then and .catch it takes a function and executes it
+}   // this async handler handles promises with .then and .catch it takes a function and executes it
 
 
 
