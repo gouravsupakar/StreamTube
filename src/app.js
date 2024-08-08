@@ -17,4 +17,14 @@ app.use(express.urlencoded({extended: true, limit: "16kb"}));  // this is to con
 app.use(express.static("public")); //to serve up static file like images, favicons, pdfs from the public folder
 app.use(cookieParser());
 
+
+//routes import 
+
+import userRouter from "./routes/user.routes.js"
+
+// routes declaration in the form middleware
+
+
+app.use("/api/v1/users", userRouter)
+
 export { app }
