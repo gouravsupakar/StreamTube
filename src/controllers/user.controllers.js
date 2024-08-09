@@ -25,8 +25,8 @@ const registerUser = asyncHandler( async(req, res) => {
 
     // validations
     if(
-        [username, fullName, email, password].some((userData) => {
-            return userData?.trim() === "";
+        [username, fullName, email, password].some((userData) => {  
+            return userData?.trim() === "";                         // some checks and returns true if all the fiels are empty
         })
     ){
         throw new ApiError(400, "All fields are required");
@@ -56,16 +56,18 @@ const registerUser = asyncHandler( async(req, res) => {
     
     if(!avatar) throw new ApiError(400, "Avatar image is required");
 
+    // creating the user entry in database;
+
    const user = await User.create({
         fullName,
         avatar: avatar.url,
-        coverImage: coverImage?.url || "",
+        coverImage: coverImage?.url || "",    // check if  coverImage is not there then send "" (empty string)
         username: username.toLowerCase(),
         email,
         password
     });
 
-    const createdUser = await User.findById(user._id).select(
+    const createdUser = await User.findById(user._id).select(     // here we are selecting things we dont want in our response that we will return to frontend
         "-password -refreshToken"
     );
 
