@@ -3,7 +3,7 @@
 // const Router = express.Router();
 
 import { Router } from "express";
-import { loginUser, logOutUser, registerUser } from "../controllers/user.controllers.js";
+import { loginUser, logOutUser, refreshAccessToken, registerUser } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJwt } from "../middlewares/auth.middleware.js";
 
@@ -32,5 +32,7 @@ router.route("/login").post( loginUser );
 // secured routes
 
 router.route("/logout").post(verifyJwt, logOutUser);
+
+router.route("/refresh-token").post(refreshAccessToken)
 
 export default router;
