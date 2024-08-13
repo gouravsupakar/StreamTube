@@ -6,6 +6,7 @@ import { ApiError } from "../utils/apiErrorHandler.js";
 import { uploadOnCloudinary } from "../utils/fileUpload.Coludinary.js";
 import { ApiResponse } from "../utils/apiResponseHandler.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 
 
@@ -299,7 +300,15 @@ const changeCurrentPassword = asyncHandler( async(req, res) => {
 
     await user.save({ validateBeforeSave: false });
 
-    return res.status(200).json("Password changed successfully");
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {},
+            "Password changed successfully"
+        )
+    );
 
 });
 
@@ -307,9 +316,11 @@ const getCurrentUser = asyncHandler( async(req, res) => {
     return res
     .status(200)
     .json(
-        200,
-        req.user,
-        "Current user fetched successfully  "
+        new ApiResponse(
+            200,
+            req.user,
+            "Current user fetched successfully  "
+        )
     )
 });
 
@@ -341,7 +352,7 @@ const updateAccountDetails = asyncHandler( async(req, res) => {
 })
 
 
-const updateUaerAvatar = asyncHandler( async(req, res) => {
+const updateUserAvatar = asyncHandler( async(req, res) => {
 
     const avatarLocalPath = req.file?.path;
 
@@ -350,6 +361,8 @@ const updateUaerAvatar = asyncHandler( async(req, res) => {
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+    // Todo: delete old avatar image
 
     if(!avatar.url) {
         throw new ApiError(400, "Error while uploading avatar to cloudinary");
@@ -416,6 +429,164 @@ const updateUserCoverImage = asyncHandler( async(req, res) => {
 });
 
 
+const getUserChannelProfile = asyncHandler( async (req, res) => {
+
+    // get the username from the url
+
+    const {username} = req.params;
+
+    if(!username?.trim()){
+        throw new ApiError(400, "username is missing");
+    }
+
+    // aggeregation pipeline
+
+   const channel = await User.aggregate(   // the output that we get from aggeregation pipelines is array
+        [
+            {
+                $match: {
+                    username: username?.toLowerCase()
+                }
+            },
+
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "subscribers"
+                }
+            },
+
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField:"subscriber",
+                    as: "subscribedTo"
+                }
+            },
+
+            {
+                $addFields: {
+                    subscribersCount: {
+                        $size: "$subscribers"
+                    },
+
+                    channelsSubscribedToCount: {
+                        $size: "$subscribedTo"
+                    },
+
+                    isSubscribed: {
+                        $cond: {
+                            if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+
+            {
+                $project: {
+                    fullName: 1,
+                    username: 1,
+                    email: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                    subscribersCount: 1,
+                    channelsSubscribedToCount: 1,
+                    isSubscribed: 1
+
+                }
+            }
+        ]
+    );
+
+    if(!channel.length){
+        throw new ApiError(404, "Channel does not exist");
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            channel[0],
+            "User channel fetched successfully"
+        )
+    )
+});
+
+
+
+const getUserWatchHistory = asyncHandler( async(req, res) => {
+    // req.user._id   we get a string which is the id when we use it with mongoose it converts the string to id behind the scene
+
+    // but in aggregation pipeline we have to convert it then we have to use it
+
+    const user = await user.aggregate(
+        [
+            // stage 1 find the user
+            {
+                $match: {
+                    _id: mongoose.Types.ObjectId(req.user._id)       // just create the mongoose objectId and pass the req.user._id
+                }
+            },
+
+            //stage 2 after getting the user lookup and join the watch history with videos model
+
+            {
+                $lookup: {
+                    from: "videos",
+                    localField: "watchHistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [           // inside the lookup you can write sub pipeline with the pipeline property.
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            username: 1,
+                                            avatar: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+
+                        // this pipeline to structure the data we get in the output as array can be difficult to deal with in fron end;
+                        {
+                            $addFields: {
+                                owner: {
+                                    $first: "$owner"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    );
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "Watch history fetched successfully"
+        )
+    )
+});
+
+
 
 
 
@@ -427,6 +598,8 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     updateAccountDetails,
-    updateUaerAvatar,
-    updateUserCoverImage
+    updateUserAvatar,
+    updateUserCoverImage,
+    getUserChannelProfile,
+    getUserWatchHistory
 }
